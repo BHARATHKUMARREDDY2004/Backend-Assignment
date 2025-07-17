@@ -1,7 +1,5 @@
 'use strict';
-var http = require('http');
 var url = require('url');
-var querystring = require('querystring');
 var usersController = require('../controllers/userController');
 var validator = require('../middlewares/validator');
 var logger = require('../utils/logger');
@@ -32,7 +30,33 @@ module.exports = function (req, res) {
   }
 
   function routeRequest() {
-    if (path === '/users' && method === 'GET') {
+
+    if (path.startsWith('/users/credit') && method == 'PUT') {
+      var segments = path.split('/');
+      var userId = segments[3];
+      userId = parseInt(userId);
+      if (userId) {
+        req.params = { id: userId };
+        usersController.creditAmount(req, res);
+      } else {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid user request for crediting amount' }));
+      }
+    } else if (path.startsWith('/users/debit') && method == 'PUT') {
+      var segments = path.split('/');
+      var userId = segments[3];
+      userId = parseInt(userId);
+      if (userId) {
+        req.params = { id: userId };
+        usersController.debitAmount(req, res);
+      } else {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid user request for debiting amount' }));
+      }
+
+    } else if (path === '/users/recover' && method == 'PUT') {
+      usersController.recoverUser(req, res);
+    } else if (path === '/users' && method === 'GET') {
       usersController.getUsers(req, res);
     } else if (path === '/users' && method === 'POST') {
       validator.validateUser(req, res, function () {

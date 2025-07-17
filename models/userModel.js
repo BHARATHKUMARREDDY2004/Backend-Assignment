@@ -1,15 +1,12 @@
 'use strict';
 var Promise = require('bluebird');
-var db = require('../config/database');
+var dbController = require('../controllers/dbController');
 var logger = require('../utils/logger');
 
 function User() {
 
     var createUser = function (userData) {
-        return db.queryAsync(
-            'INSERT INTO users SET ?',
-            [userData]
-        )
+        return dbController.insert(userData)
             .then(function (result) {
                 logger.info('New user Id : ' + result.insertId);
                 return result.insertId;
@@ -21,7 +18,7 @@ function User() {
     };
 
     var getAllUsers = function () {
-        return db.queryAsync('SELECT * FROM users')
+        return dbController.findAll()
             .then(function (results) {
                 logger.info('Number of users ' + results.length);
                 return results;
@@ -33,7 +30,7 @@ function User() {
     };
 
     var getUserById = function (userId) {
-        return db.queryAsync('SELECT * FROM users WHERE id = ?', [userId])
+        return dbController.findById(userId)
             .then(function (results) {
                 if (results.length === 0) {
                     var notFoundError = new Error('User not found');
@@ -50,7 +47,7 @@ function User() {
     };
 
     var updateUser = function (userId, userData) {
-        return db.queryAsync('UPDATE users SET ? WHERE id = ?', [userData, userId])
+        return dbController.update(userId, userData)
             .then(function (result) {
                 if (result.affectedRows === 0) {
                     var notFoundError = new Error('User not found');
@@ -67,7 +64,7 @@ function User() {
     };
 
     var deleteUser = function (userId) {
-        return db.queryAsync('DELETE FROM users WHERE id = ?', [userId])
+        return dbController.remove(userId)
             .then(function (result) {
                 if (result.affectedRows === 0) {
                     var notFoundError = new Error('User not found');
@@ -83,12 +80,56 @@ function User() {
             });
     };
 
+    var recoverUser = function (userEmail) {
+        return dbController.recover(userEmail)
+            .then(function (result) {
+                if (result.affectedRows === 0) {
+                    var notFoundError = new Error('User not found');
+                    notFoundError.name = 'NotFoundError';
+                    throw notFoundError;
+                }
+                logger.info('Recovered user with ID: ' + userEmail);
+                return result.affectedRows;
+            })
+            .catch(function (err) {
+                logger.error('Error while recovering user: ' + err.message);
+                throw err;
+            });
+    }
+
+    var creditAmount = function(amount, userId){
+        return dbController.credit(amount, userId)
+            .then(function(result){
+                logger.info("Credit successful for user " + userId + ", new balance: " + result);
+                return result;
+            })
+            .catch(function(err){
+                logger.error("Error crediting money: " + err.message);
+                throw err;
+            });
+    }
+
+    var debitAmount = function(amount, userId){
+        return dbController.debit(amount, userId)
+            .then(function(result){
+                logger.info("Debit successful for user " + userId + ", new balance: " + result);
+                return result;
+            })
+            .catch(function(err){
+                logger.error("Error debiting money: " + err.message);
+                throw err;
+            });
+    }
+
     return {
         createUser: createUser,
         getAllUsers: getAllUsers,
         getUserById: getUserById,
         updateUser: updateUser,
-        deleteUser: deleteUser
+        deleteUser: deleteUser,
+        recoverUser: recoverUser,
+        creditAmount: creditAmount,
+        debitAmount: debitAmount
     };
 
 }
